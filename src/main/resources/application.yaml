@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: OrderHandler
+
+  datasource:
+    url: jdbc:postgresql:localhost:5432/handlerdb
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+
+  kafka:
+    bootstrap-servers:
+      - localhost:9092
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    consumer:
+      group-id: orders-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+    listener:
+      ack-mode: manual_immediate
+
+server:
+  port: 8081
+  forward-headers-strategy: framework
