@@ -1,0 +1,34 @@
+# Maven build output
+target/
+
+# Maven wrapper jar
+.mvn/wrapper/maven-wrapper.jar
+
+# Documentation
+HELP.md
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Test reports
+**/test-results/
+**/coverage/
+
+# .env
+.env
+.env.example
