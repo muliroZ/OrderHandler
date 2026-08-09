@@ -8,6 +8,8 @@ services:
     depends_on:
       order-db:
         condition: service_healthy
+      kafka:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -18,6 +20,42 @@ services:
       - "8081:8081"
     networks:
       - handler
+
+  audit-worker:
+    build:
+      context: ./workers/audit-java/
+      dockerfile: Dockerfile
+    container_name: audit-worker
+    restart: always
+    depends_on:
+      order-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/analytics
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+    networks:
+      - handler
+
+  inventory-worker:
+    build:
+      context: ./workers/inventory-go/
+      dockerfile: Dockerfile
+    container_name: inventory-worker
+    restart: always
+    depends_on:
+      order-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DATABASE_USER: ${DB_USER}
+      DATABASE_PASS: ${DB_PASS}
+      DATABASE_HOST: order-db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: inventory
 
   order-db:
     image: postgres:17-alpine
@@ -36,7 +74,7 @@ services:
     networks:
       - handler
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d orderhandler"]
       interval: 3s
       timeout: 3s
       retries: 3
