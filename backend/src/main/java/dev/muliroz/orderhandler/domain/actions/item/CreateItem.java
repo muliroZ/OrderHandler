@@ -14,7 +14,7 @@ public class CreateItem {
         this.itemRepository = itemRepository;
     }
 
-    public void execute(String name, String description, BigDecimal price, ItemCategory category, int stock) {
+    public Item execute(String name, String description, BigDecimal price, ItemCategory category, int stock) {
         Item item = Item.create(
                 name,
                 description,
@@ -24,5 +24,6 @@ public class CreateItem {
         );
 
         itemRepository.save(item);
+        return item;
     }
 }

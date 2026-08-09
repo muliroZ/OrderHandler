@@ -15,7 +15,7 @@ public class DeleteItem {
         this.itemRepository = itemRepository;
     }
 
-    public void execute(UUID itemId) {
+    public Item execute(UUID itemId) {
         Item target = itemRepository.findById(itemId)
                 .orElseThrow(() -> new ResourceNotExistsException("O item não existe"));
 
@@ -34,5 +34,6 @@ public class DeleteItem {
         );
 
         itemRepository.save(deletedItem);
+        return deletedItem;
     }
 }

@@ -9,15 +9,23 @@ import dev.muliroz.orderhandler.dto.external.CreateItemRequest;
 import dev.muliroz.orderhandler.dto.external.ListItemsRequest;
 import dev.muliroz.orderhandler.dto.external.ListItemsResponse;
 import dev.muliroz.orderhandler.dto.external.UpdateItemRequest;
+import dev.muliroz.orderhandler.events.EventEnvelope;
+import dev.muliroz.orderhandler.events.EventMetadata;
+import dev.muliroz.orderhandler.events.EventType;
+import dev.muliroz.orderhandler.events.payloads.ItemCreatedPayload;
+import dev.muliroz.orderhandler.events.payloads.ItemDeletedPayload;
+import dev.muliroz.orderhandler.events.payloads.ItemUpdatedPayload;
 import dev.muliroz.orderhandler.mappers.ItemMapper;
+import dev.muliroz.orderhandler.model.OutboxMessage;
+import dev.muliroz.orderhandler.repository.OutboxRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class ItemService {
@@ -27,7 +35,8 @@ public class ItemService {
     private final UpdateItem updateItem;
     private final DeleteItem deleteItem;
     private final ItemMapper mapper;
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
     public ItemService(
             CreateItem createItem,
@@ -35,14 +44,16 @@ public class ItemService {
             UpdateItem updateItem,
             DeleteItem deleteItem,
             ItemMapper mapper,
-            KafkaTemplate<String, String> kafkaTemplate
+            OutboxRepository outboxRepository,
+            ObjectMapper objectMapper
     ) {
         this.createItem = createItem;
         this.listItems = listItems;
         this.updateItem = updateItem;
         this.deleteItem = deleteItem;
         this.mapper = mapper;
-        this.kafkaTemplate = kafkaTemplate;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
     }
 
     public ListItemsResponse search(ListItemsRequest request) {
@@ -63,15 +74,30 @@ public class ItemService {
 
     @Transactional
     public void create(CreateItemRequest request) {
-        createItem.execute(
+        Item item = createItem.execute(
                 request.name(),
                 request.description(),
                 request.price(),
                 request.category(),
                 request.stock()
         );
+
+        EventEnvelope<ItemCreatedPayload> event = new EventEnvelope<>(
+                new EventMetadata(EventType.ITEM_CREATED, "1.0"),
+                new ItemCreatedPayload(item.getId(), item.getName(), item.getPrice(), item.getCategory(), item.getStock())
+        );
+        String payloadJson = serializeEvent(event);
+
+        OutboxMessage outbox = new OutboxMessage(
+                "ITEM",
+                item.getId(),
+                "items-created",
+                payloadJson
+        );
+        outboxRepository.save(outbox);
     }
 
+    @Transactional
     public void update(UUID itemId, UpdateItemRequest request) {
         Map<String, Object> fields = new HashMap<>();
 
@@ -96,9 +122,46 @@ public class ItemService {
         }
 
         updateItem.execute(itemId, fields);
+
+        EventEnvelope<ItemUpdatedPayload> event = new EventEnvelope<>(
+                new EventMetadata(EventType.ITEM_UPDATED, "1.0"),
+                new ItemUpdatedPayload(itemId, fields)
+        );
+        String payloadJson = serializeEvent(event);
+
+        OutboxMessage outbox = new OutboxMessage(
+                "ITEM",
+                itemId,
+                "items-updated",
+                payloadJson
+        );
+        outboxRepository.save(outbox);
     }
 
+    @Transactional
     public void delete(UUID itemId) {
-        deleteItem.execute(itemId);
+        Item deletedItem = deleteItem.execute(itemId);
+
+        EventEnvelope<ItemDeletedPayload> event = new EventEnvelope<>(
+                new EventMetadata(EventType.ITEM_DEACTIVATED, "1.0"),
+                new ItemDeletedPayload(itemId, deletedItem.getName())
+        );
+        String payloadJson = serializeEvent(event);
+
+        OutboxMessage outbox = new OutboxMessage(
+                "ITEM",
+                itemId,
+                "items-deactivated",
+                payloadJson
+        );
+        outboxRepository.save(outbox);
+    }
+
+    private String serializeEvent(Object event) {
+        try {
+            return objectMapper.writeValueAsString(event);
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Erro ao serializar evento: " + e.getMessage());
+        }
     }
 }

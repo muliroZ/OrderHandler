@@ -21,7 +21,7 @@ public class CreateOrder {
         this.itemRepository = itemRepository;
     }
 
-    public void execute(UUID clientId, List<OrderItemDTO> items) {
+    public Order execute(UUID clientId, List<OrderItemDTO> items) {
         List<OrderItem> orderItems = items.stream()
                 .map(dto -> {
                     Item item = itemRepository.findById(dto.itemId())
@@ -32,5 +32,7 @@ public class CreateOrder {
 
         Order order = Order.create(clientId, orderItems);
         orderRepository.save(order);
+
+        return order;
     }
 }

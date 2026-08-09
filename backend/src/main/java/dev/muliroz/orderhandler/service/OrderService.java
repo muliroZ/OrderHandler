@@ -7,10 +7,20 @@ import dev.muliroz.orderhandler.domain.entities.Order;
 import dev.muliroz.orderhandler.dto.external.CreateOrderRequest;
 import dev.muliroz.orderhandler.dto.external.ListOrdersRequest;
 import dev.muliroz.orderhandler.dto.external.ListOrdersResponse;
+import dev.muliroz.orderhandler.events.EventEnvelope;
+import dev.muliroz.orderhandler.events.EventMetadata;
+import dev.muliroz.orderhandler.events.EventType;
+import dev.muliroz.orderhandler.events.payloads.OrderCancelledPayload;
+import dev.muliroz.orderhandler.events.payloads.OrderCreatedPayload;
 import dev.muliroz.orderhandler.mappers.OrderMapper;
+import dev.muliroz.orderhandler.model.OutboxMessage;
+import dev.muliroz.orderhandler.repository.OutboxRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +33,23 @@ public class OrderService {
     private final ListOrders listOrders;
     private final CancelOrder cancelOrder;
     private final OrderMapper mapper;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
-    public OrderService(CreateOrder createOrder, ListOrders listOrders, CancelOrder cancelOrder, OrderMapper mapper) {
+    public OrderService(
+            CreateOrder createOrder,
+            ListOrders listOrders,
+            CancelOrder cancelOrder,
+            OrderMapper mapper,
+            OutboxRepository outboxRepository,
+            ObjectMapper objectMapper
+    ) {
         this.createOrder = createOrder;
         this.listOrders = listOrders;
         this.cancelOrder = cancelOrder;
         this.mapper = mapper;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
     }
 
     public ListOrdersResponse search(ListOrdersRequest request) {
@@ -46,10 +67,47 @@ public class OrderService {
 
     @Transactional
     public void create(CreateOrderRequest request) {
-        createOrder.execute(request.clientId(), request.orderItems());
+        Order order = createOrder.execute(request.clientId(), request.orderItems());
+
+        EventEnvelope<OrderCreatedPayload> event = new EventEnvelope<>(
+                new EventMetadata(EventType.ORDER_CREATED, "1.0"),
+                new OrderCreatedPayload(order.getId(), order.getClientId(), order.subtotal())
+        );
+        String payloadJson = serializeEvent(event);
+
+        OutboxMessage outbox = new OutboxMessage(
+                "PEDIDO",
+                order.getId(),
+                "orders-created",
+                payloadJson
+        );
+        outboxRepository.save(outbox);
     }
 
+    @Transactional
     public void cancel(UUID orderId) {
         cancelOrder.execute(orderId);
+
+        EventEnvelope<OrderCancelledPayload> event = new EventEnvelope<>(
+                new EventMetadata(EventType.ORDER_CANCELLED, "1.0"),
+                new OrderCancelledPayload(orderId)
+        );
+        String payloadJson = serializeEvent(event);
+
+        OutboxMessage outbox = new OutboxMessage(
+                "PEDIDO",
+                orderId,
+                "orders-cancelled",
+                payloadJson
+        );
+        outboxRepository.save(outbox);
+    }
+
+    private String serializeEvent(Object event) {
+        try {
+            return objectMapper.writeValueAsString(event);
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Erro ao serializar evento: " + e.getMessage());
+        }
     }
 }
