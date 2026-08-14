@@ -27,8 +27,8 @@ type StockManagementParams struct {
 }
 
 type OrderItemParam struct {
-	ItemID uuid.UUID
-	Quantity int
+	ItemID uuid.UUID `json:"item_id"`
+	Quantity int `json:"quantity"`
 }
 
 // functions

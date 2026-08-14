@@ -18,27 +18,27 @@ const (
 
 // eventos
 type InventoryReservedEvent struct {
-	ID uuid.UUID
-	OriginEventID uuid.UUID 
-	OrderID uuid.UUID 
-	OccurredAt time.Time 
-	Items []OrderItemParam
+	ID            uuid.UUID        `json:"id"`
+	OriginEventID uuid.UUID        `json:"origin_event_id"`
+	OrderID       uuid.UUID        `json:"order_id"`
+	OccurredAt    time.Time        `json:"occurred_at"`
+	Items         []OrderItemParam `json:"items"`
 }
 
 type InventoryRejectedEvent struct {
-	ID uuid.UUID
-	OriginEventID uuid.UUID
-	OrderID uuid.UUID
-	Reason string
-	OccurredAt time.Time
+	ID            uuid.UUID `json:"id"`
+	OriginEventID uuid.UUID `json:"origin_event_id"`
+	OrderID       uuid.UUID `json:"order_id"`
+	Reason        string    `json:"reason"`
+	OccurredAt    time.Time `json:"occurred_at"`
 }
 
 type InventoryRestoredEvent struct {
-	ID uuid.UUID
-	OriginEventID uuid.UUID
-	OrderID uuid.UUID
-	OccurredAt time.Time
-	Items []OrderItemParam
+	ID            uuid.UUID        `json:"id"`
+	OriginEventID uuid.UUID        `json:"origin_event_id"`
+	OrderID       uuid.UUID        `json:"order_id"`
+	OccurredAt    time.Time        `json:"occurred_at"`
+	Items         []OrderItemParam `json:"items"`
 }
 
 // entidades

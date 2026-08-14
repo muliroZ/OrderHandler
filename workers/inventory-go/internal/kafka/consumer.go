@@ -10,8 +10,14 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+type EventEnvelope[T any] struct {
+	Metadata struct {
+		EventID uuid.UUID `json:"event_id"`
+	} `json:"metadata"`
+	Payload T `json:"payload"`
+}
+
 type OrderCreatedMessageDTO struct {
-    EventID uuid.UUID `json:"event_id"`
     OrderID uuid.UUID `json:"order_id"`
     Items   []struct {
         ItemID   uuid.UUID `json:"item_id"`
@@ -20,7 +26,6 @@ type OrderCreatedMessageDTO struct {
 }
 
 type OrderCancelledMessageDTO struct {
-	EventID uuid.UUID `json:"event_id"`
 	OrderID uuid.UUID `json:"order_id"`
 	Items   []struct {
         ItemID   uuid.UUID `json:"item_id"`
@@ -29,7 +34,6 @@ type OrderCancelledMessageDTO struct {
 }
 
 type ItemCreatedMessageDTO struct {
-	EventID uuid.UUID `json:"event_id"`
 	ItemID uuid.UUID `json:"item_id"`
 	InitialQuantity int `json:"initial_quantity"`
 }
@@ -93,29 +97,29 @@ func (c *OrderConsumer) processRecord(ctx context.Context, record *kgo.Record) e
 }
 
 func (c *OrderConsumer) handleOrderCreated(ctx context.Context, payload []byte) error {
-	var dto OrderCreatedMessageDTO
+	var dto EventEnvelope[OrderCreatedMessageDTO]
 	if err := json.Unmarshal(payload, &dto); err != nil {
 		log.Printf("Erro ao desserializar orders-created: %v", err)
 		return nil
 	}
 
-	params := c.toStockManagementParams(dto.EventID, dto.OrderID, dto.Items)
+	params := c.toStockManagementParams(dto.Metadata.EventID, dto.Payload.OrderID, dto.Payload.Items)
 	return c.service.ReserveStock(ctx, params)
 }
 
 func (c *OrderConsumer) handleOrderCancelled(ctx context.Context, payload []byte) error {
-	var dto OrderCancelledMessageDTO
+	var dto EventEnvelope[OrderCancelledMessageDTO]
 	if err := json.Unmarshal(payload, &dto); err != nil {
 		log.Printf("Erro ao desserializar orders-cancelled: %v", err)
 		return nil
 	}
 
-	params := c.toStockManagementParams(dto.EventID, dto.OrderID, dto.Items)
+	params := c.toStockManagementParams(dto.Metadata.EventID, dto.Payload.OrderID, dto.Payload.Items)
 	return c.service.RestoreStock(ctx, params)
 }
 
 func (c *OrderConsumer) handleItemCreated(ctx context.Context, payload []byte) error {
-	var dto ItemCreatedMessageDTO
+	var dto EventEnvelope[ItemCreatedMessageDTO]
 	if err := json.Unmarshal(payload, &dto); err != nil {
 		log.Printf("Erro ao desserializar items-created: %v", err)
 		return nil
@@ -123,9 +127,9 @@ func (c *OrderConsumer) handleItemCreated(ctx context.Context, payload []byte) e
 
 	return c.service.RegisterItem(
 		ctx,
-		dto.EventID,
-		dto.ItemID,
-		dto.InitialQuantity,
+		dto.Metadata.EventID,
+		dto.Payload.ItemID,
+		dto.Payload.InitialQuantity,
 	)
 }
 

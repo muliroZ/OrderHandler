@@ -37,7 +37,7 @@ func (p *EventProducer) PublishInventoryReserved(
 
 func (p *EventProducer) PublishInventoryRejected(
 	ctx context.Context,
-	event domain.InventoryRejectedEvent,
+	event *domain.InventoryRejectedEvent,
 ) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
@@ -56,7 +56,7 @@ func (p *EventProducer) PublishInventoryRejected(
 
 func (p *EventProducer) PublishInventoryRestored(
 	ctx context.Context,
-	event domain.InventoryRestoredEvent,
+	event *domain.InventoryRestoredEvent,
 ) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
