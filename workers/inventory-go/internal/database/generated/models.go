@@ -5,20 +5,21 @@
 package database
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type StockItem struct {
-	ItemID    pgtype.UUID
+	ID        uuid.UUID
 	Quantity  int32
-	UpdatedAt pgtype.Timestamptz
+	UpdatedAt time.Time
 }
 
 type StockMovement struct {
-	ID        pgtype.UUID
-	EventID   pgtype.UUID
-	OrderID   pgtype.UUID
-	Type      string
-	Status    string
-	CreatedAt pgtype.Timestamptz
+	EventID       uuid.UUID
+	OrderID       *uuid.UUID
+	OperationType string
+	Status        string
+	CreatedAt     time.Time
 }

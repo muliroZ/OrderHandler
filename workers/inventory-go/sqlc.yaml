@@ -12,3 +12,18 @@ sql:
         package: "database"
         out: "internal/database/generated"
         sql_package: "pgx/v5"
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          
+          - column: "stock_movements.order_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+
+          - column: "stock_items.updated_at"
+            go_type: "time.Time"
+
+          - column: "stock_movements.created_at"
+            go_type: "time.Time"
