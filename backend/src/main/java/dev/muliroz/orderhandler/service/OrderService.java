@@ -7,11 +7,13 @@ import dev.muliroz.orderhandler.domain.entities.Order;
 import dev.muliroz.orderhandler.dto.external.CreateOrderRequest;
 import dev.muliroz.orderhandler.dto.external.ListOrdersRequest;
 import dev.muliroz.orderhandler.dto.external.ListOrdersResponse;
+import dev.muliroz.orderhandler.dto.internal.OrderItemDTO;
 import dev.muliroz.orderhandler.events.EventEnvelope;
 import dev.muliroz.orderhandler.events.EventMetadata;
 import dev.muliroz.orderhandler.events.EventType;
 import dev.muliroz.orderhandler.events.payloads.OrderCancelledPayload;
 import dev.muliroz.orderhandler.events.payloads.OrderCreatedPayload;
+import dev.muliroz.orderhandler.mappers.OrderItemMapper;
 import dev.muliroz.orderhandler.mappers.OrderMapper;
 import dev.muliroz.orderhandler.model.OutboxMessage;
 import dev.muliroz.orderhandler.repository.OutboxRepository;
@@ -32,7 +34,8 @@ public class OrderService {
     private final CreateOrder createOrder;
     private final ListOrders listOrders;
     private final CancelOrder cancelOrder;
-    private final OrderMapper mapper;
+    private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
@@ -40,14 +43,16 @@ public class OrderService {
             CreateOrder createOrder,
             ListOrders listOrders,
             CancelOrder cancelOrder,
-            OrderMapper mapper,
+            OrderMapper orderMapper,
+            OrderItemMapper orderItemMapper,
             OutboxRepository outboxRepository,
             ObjectMapper objectMapper
     ) {
         this.createOrder = createOrder;
         this.listOrders = listOrders;
         this.cancelOrder = cancelOrder;
-        this.mapper = mapper;
+        this.orderMapper = orderMapper;
+        this.orderItemMapper = orderItemMapper;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
     }
@@ -62,7 +67,7 @@ public class OrderService {
         filter.put("sortBySubtotalDesc", request.sortBySubtotalDesc());
 
         List<Order> orders = listOrders.execute(filter);
-        return new ListOrdersResponse(orders.stream().map(mapper::toDTO).toList());
+        return new ListOrdersResponse(orders.stream().map(orderMapper::toDTO).toList());
     }
 
     @Transactional
@@ -71,7 +76,12 @@ public class OrderService {
 
         EventEnvelope<OrderCreatedPayload> event = new EventEnvelope<>(
                 new EventMetadata(EventType.ORDER_CREATED, "1.0"),
-                new OrderCreatedPayload(order.getId(), order.getClientId(), order.subtotal())
+                new OrderCreatedPayload(
+                        order.getId(),
+                        order.getClientId(),
+                        order.subtotal(),
+                        request.orderItems()
+                )
         );
         String payloadJson = serializeEvent(event);
 
@@ -86,11 +96,15 @@ public class OrderService {
 
     @Transactional
     public void cancel(UUID orderId) {
-        cancelOrder.execute(orderId);
+        Order cancelledOrder = cancelOrder.execute(orderId);
+
+        List<OrderItemDTO> itemsDTO = cancelledOrder.getOrderItems().stream()
+                .map(orderItemMapper::toDTO)
+                .toList();
 
         EventEnvelope<OrderCancelledPayload> event = new EventEnvelope<>(
                 new EventMetadata(EventType.ORDER_CANCELLED, "1.0"),
-                new OrderCancelledPayload(orderId)
+                new OrderCancelledPayload(orderId, itemsDTO)
         );
         String payloadJson = serializeEvent(event);
 

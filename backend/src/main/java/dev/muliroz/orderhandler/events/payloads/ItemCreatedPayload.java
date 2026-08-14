@@ -10,6 +10,6 @@ public record ItemCreatedPayload(
         String name,
         BigDecimal price,
         ItemCategory category,
-        int stock
+        int initialQuantity
 ) {
 }

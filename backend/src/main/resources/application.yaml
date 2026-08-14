@@ -2,6 +2,9 @@ spring:
   application:
     name: OrderHandler
 
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}

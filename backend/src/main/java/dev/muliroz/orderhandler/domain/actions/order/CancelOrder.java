@@ -15,11 +15,12 @@ public class CancelOrder {
         this.orderRepository = orderRepository;
     }
 
-    public void execute(UUID orderId) {
+    public Order execute(UUID orderId) {
         Order actualOrder = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotExistsException("O pedido não existe"));
 
         actualOrder.changeStatus(OrderStatus.CANCELADO);
         orderRepository.save(actualOrder);
+        return actualOrder;
     }
 }
