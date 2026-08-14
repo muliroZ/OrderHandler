@@ -19,8 +19,6 @@ import dev.muliroz.orderhandler.mappers.ItemMapper;
 import dev.muliroz.orderhandler.model.OutboxMessage;
 import dev.muliroz.orderhandler.repository.OutboxRepository;
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;

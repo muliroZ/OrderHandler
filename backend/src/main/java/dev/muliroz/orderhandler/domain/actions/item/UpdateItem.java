@@ -8,7 +8,6 @@ import dev.muliroz.orderhandler.domain.exceptions.ResourceNotExistsException;
 
 import java.math.BigDecimal;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 public class UpdateItem {
