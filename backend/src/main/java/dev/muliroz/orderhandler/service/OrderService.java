@@ -78,7 +78,11 @@ public class OrderService {
                 new OrderCreatedPayload(
                         order.getId(),
                         order.getClientId(),
+                        request.customerEmail(),
                         order.subtotal(),
+                        request.paymentMethod(),
+                        request.cardToken(),
+                        request.installments(),
                         request.orderItems()
                 )
         );

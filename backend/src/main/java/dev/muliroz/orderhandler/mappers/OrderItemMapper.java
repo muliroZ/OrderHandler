@@ -38,7 +38,8 @@ public class OrderItemMapper {
     public OrderItemDTO toDTO(OrderItem orderItem) {
         return new OrderItemDTO(
                 orderItem.item().getId(),
-                orderItem.quantity()
+                orderItem.quantity(),
+                orderItem.unitPrice()
         );
     }
 }
