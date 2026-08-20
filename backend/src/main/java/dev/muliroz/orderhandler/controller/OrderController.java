@@ -27,10 +27,10 @@ public class OrderController {
             @RequestParam(required = false) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "false") boolean sortBySubtotalAsc
+            @RequestParam(defaultValue = "false") boolean sortBySubtotalDesc
     ) {
         ListOrdersResponse response = orderService.search(new ListOrdersRequest(
-                startDate, endDate, page, size, sortBySubtotalAsc
+                startDate, endDate, page, size, sortBySubtotalDesc
         ));
         return ResponseEntity.status(200).body(response);
     }

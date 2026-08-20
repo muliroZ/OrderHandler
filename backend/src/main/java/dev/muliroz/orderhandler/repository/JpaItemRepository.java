@@ -37,7 +37,7 @@ public class JpaItemRepository implements ItemRepository {
 
     @Override
     public List<Item> search(Map<String, Object> filter) {
-        Specification<ItemEntity> spec = Specification.unrestricted();
+        Specification<ItemEntity> spec = (root, query, cb) -> cb.isTrue(root.get("active"));
 
         if (filter.get("term") instanceof String term && !term.isBlank()) {
             spec = spec.and(ItemSpecification.nameContains(term));
@@ -82,10 +82,8 @@ public class JpaItemRepository implements ItemRepository {
 
     @Override
     public Optional<Item> findById(UUID itemId) {
-        ItemEntity entity = itemRepository.findById(itemId)
-                .orElseThrow(() -> new ResourceNotExistsException("O item não existe"));
-
-        return Optional.of(mapper.toDomain(entity));
+        return itemRepository.findById(itemId)
+                .map(mapper::toDomain);
     }
 
     @Override

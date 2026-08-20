@@ -92,10 +92,7 @@ public class JpaOrderRepository implements OrderRepository {
 
     @Override
     public Optional<Order> findById(UUID orderId) {
-        OrderEntity entity = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotExistsException("O pedido não existe"));
-
-        Order order = orderMapper.toDomain(entity);
-        return Optional.of(order);
+        return orderRepository.findById(orderId)
+                .map(orderMapper::toDomain);
     }
 }
