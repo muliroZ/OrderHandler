@@ -15,7 +15,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/orderhandler
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+      SPRING_DATASOURCE_PASSWORD: ${ORDERHANDLER_DB_PASSWORD}
     ports:
       - "8081:8081"
     networks:
@@ -35,7 +35,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/analytics
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+      SPRING_DATASOURCE_PASSWORD: ${ANALYTICS_DB_PASSWORD}
     networks:
       - handler
 
@@ -52,10 +52,29 @@ services:
         condition: service_started
     environment:
       DATABASE_USER: ${DB_USER}
-      DATABASE_PASS: ${DB_PASS}
+      DATABASE_PASS: ${INVENTORY_DB_PASSWORD}
       DATABASE_HOST: order-db
       DATABASE_PORT: 5432
       DATABASE_NAME: inventory
+    networks:
+      - handler
+
+  payment-worker:
+    build:
+      context: ./workers/payment-java
+      dockerfile: Dockerfile
+    container_name: payment-worker
+    restart: always
+    depends_on:
+      order-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/payments
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PAYMENT_DB_PASSWORD}
+      PAYMENT_ACCESS_TOKEN: ${PAYMENT_ACCESS_TOKEN}
     networks:
       - handler
 
