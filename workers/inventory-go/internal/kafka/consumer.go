@@ -4,6 +4,7 @@ import (
 	"context"
 	"dev/muliroz/inventory-worker/internal/domain"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
@@ -104,7 +105,13 @@ func (c *OrderConsumer) handleOrderCreated(ctx context.Context, payload []byte) 
 	}
 
 	params := c.toStockManagementParams(dto.Metadata.EventID, dto.Payload.OrderID, dto.Payload.Items)
-	return c.service.ReserveStock(ctx, params)
+	err := c.service.ReserveStock(ctx, params)
+
+	if errors.Is(err, domain.ErrInsufficientStock) || errors.Is(err, domain.ErrItemNotFound) {
+		return nil
+	}
+
+	return err
 }
 
 func (c *OrderConsumer) handleOrderCancelled(ctx context.Context, payload []byte) error {

@@ -14,6 +14,7 @@ type Repository interface {
 	SaveMovement(ctx context.Context, movement *StockMovement) error
 	SaveItemAndMovement(ctx context.Context, item *StockItem, movement *StockMovement) error
 	UpdateStockAndSaveMovement(ctx context.Context, items []*StockItem, movement *StockMovement) error
+	ReserveStockTx(ctx context.Context, itemsIDs []uuid.UUID, quantities map[uuid.UUID]int, movement *StockMovement) ([]OrderItemParam, error)
 }
 
 type EventPublisher interface {

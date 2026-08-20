@@ -133,7 +133,7 @@ services:
       - "8080:8080"
     environment:
       DYNAMIC_CONFIG_ENABLED: 'true'
-      KAFKA_CLUSTARS_0_NAME: 'local'
+      KAFKA_CLUSTERS_0_NAME: 'local'
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:29092'
     depends_on:
       - kafka

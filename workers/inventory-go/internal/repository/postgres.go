@@ -5,6 +5,7 @@ import (
 	"dev/muliroz/inventory-worker/internal/database/generated"
 	"dev/muliroz/inventory-worker/internal/domain"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -140,4 +141,64 @@ func (r *PostgresRepository) UpdateStockAndSaveMovement(ctx context.Context, ite
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *PostgresRepository) ReserveStockTx(ctx context.Context, itemsIDs []uuid.UUID, quantities map[uuid.UUID]int, movement *domain.StockMovement) (
+	[]domain.OrderItemParam, error,
+) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+
+	rows, err := qtx.FindItemsByIDs(ctx, itemsIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) != len(quantities) {
+		return nil, domain.ErrItemNotFound
+	}
+
+	for _, row := range rows {
+		requiredQty := quantities[row.ID]
+		if int(row.Quantity) < requiredQty {
+			return nil, domain.ErrInsufficientStock
+		}
+	}
+
+	var reservedItems []domain.OrderItemParam
+	for _, row := range rows {
+		requiredQty := quantities[row.ID]
+		newQty := row.Quantity - int32(requiredQty)
+
+		err := qtx.UpdateStockItemQuantity(ctx, database.UpdateStockItemQuantityParams{
+			ID: row.ID,
+			Quantity: newQty,
+			UpdatedAt: time.Now(),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		reservedItems = append(reservedItems, domain.OrderItemParam{
+			ItemID: row.ID,
+			Quantity: requiredQty,
+		})
+	}
+
+	err = qtx.SaveMovement(ctx, database.SaveMovementParams{
+		EventID: movement.EventID,
+		OrderID: movement.OrderID,
+		OperationType: movement.OperationType,
+		Status: movement.Status,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return reservedItems, tx.Commit(ctx)
 }

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 )
@@ -81,80 +82,21 @@ func (s *InventoryService) ReserveStock(
 		orderItems[itemID] += orderItem.Quantity
 	}
 
-	items, err := s.repo.FindItemsByIds(ctx, itemsIDs)
-	if err != nil {
-		return err
-	}
-
-	if len(items) != len(orderItems) {
-		movement := NewStockMovement(params.EventID, &params.OrderID, MovementTypeReservation, MovementStatusItemNotFound)
-		event := NewInventoryRejectedEvent(params.EventID, params.OrderID, ErrItemNotFound.Error())
-
-		err = s.repo.SaveMovement(ctx, movement)
-		if err != nil {
-			return err
-		}
-
-		err = s.publisher.PublishInventoryRejected(ctx, event)
-		if err != nil {
-			return err
-		}
-
-		return ErrItemNotFound
-	}
-
-	for _, item := range items {
-		if !item.HasStock(orderItems[item.ID]) {
-			movement := NewStockMovement(params.EventID, &params.OrderID, MovementTypeReservation, MovementStatusInsufficientStock)
-			event := NewInventoryRejectedEvent(params.EventID, params.OrderID, ErrInsufficientStock.Error())
-			
-			err = s.repo.SaveMovement(ctx, movement)
-			if err != nil {
-				return err
-			}
-
-			err = s.publisher.PublishInventoryRejected(ctx, event)
-			if err != nil {
-				return err
-			}
-			
-			return ErrInsufficientStock
-		}
-	}
-
-	for _, item := range items {
-		err = item.Debit(orderItems[item.ID])
-		if err != nil {
-			movement := NewStockMovement(params.EventID, &params.OrderID, MovementTypeReservation, MovementStatusInsufficientStock)
-			event := NewInventoryRejectedEvent(params.EventID, params.OrderID, err.Error())
-			
-			err = s.repo.SaveMovement(ctx, movement)
-			if err != nil {
-				return err
-			}
-
-			err = s.publisher.PublishInventoryRejected(ctx, event)
-			if err != nil {
-				return err
-			}
-
-			return err
-		}
-	}
-
 	movement := NewStockMovement(params.EventID, &params.OrderID, MovementTypeReservation, MovementStatusSuccess)
-	err = s.repo.UpdateStockAndSaveMovement(ctx, items, movement)
+	reservedItems, err := s.repo.ReserveStockTx(ctx, itemsIDs, orderItems, movement)
 	if err != nil {
+		if errors.Is(err, ErrItemNotFound) || errors.Is(err, ErrInsufficientStock) {
+			failMovement := NewStockMovement(params.EventID, &params.OrderID, MovementTypeReservation, err.Error())
+			_ = s.repo.SaveMovement(ctx, failMovement)
+
+			event := NewInventoryRejectedEvent(params.EventID, params.OrderID, err.Error())
+			_ = s.publisher.PublishInventoryRejected(ctx, event)
+		}
 		return err
 	}
 
-	event := NewInventoryReservedEvent(params.EventID, params.OrderID, params.OrderItems)
-	err = s.publisher.PublishInventoryReserved(ctx, event)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	event := NewInventoryReservedEvent(params.EventID, params.OrderID, reservedItems)
+	return s.publisher.PublishInventoryReserved(ctx, event)
 }
 
 func (s *InventoryService) RestoreStock(
