@@ -1,4 +1,0 @@
-CREATE DATABASE orderhandler;
-CREATE DATABASE analytics;
-CREATE DATABASE inventory;
-CREATE DATABASE payments;

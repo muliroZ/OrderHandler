@@ -9,14 +9,11 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
 import dev.muliroz.paymentjava.dto.ChargeCommand;
 import dev.muliroz.paymentjava.dto.PaymentResultDTO;
-import dev.muliroz.paymentjava.model.PaymentMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 public class PaymentGatewayClient {
